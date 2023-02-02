@@ -1,17 +1,7 @@
 const mysql = require('mysql2');
 const inquirer = require('inquirer');
-const Table = require('./lib/Table');
+const sequelize = require('./config/connection.js');
 
-// Connect to database
-const db = mysql.createConnection(
-    {
-      host: 'localhost',
-      user: 'root',
-      password: 'password',
-      database: 'testdb'
-    },
-    console.log(`Connected to the testdb database.`)
-  );
 
 function DisplayTitleCard() {
     console.log('Welcome to the Employee Tracker!');
@@ -33,21 +23,28 @@ function MainMenu() {
     .then((answers) => {
         switch(answers.choice) {
             case 0:
+                ViewTable('employees');
+                MainMenu();
                 break;
             case 1:
                 break;
             case 2:
                 break;
             case 3:
+                ViewTable('roles');
+                MainMenu();
                 break;
             case 4:
                 break;
             case 5:
+                ViewTable('departments');
+                MainMenu();
                 break;
             case 6:
                 break;
             case 7:
-                break;
+                console.log('Goodbye!');
+                process.exit();
             default:
                 throw new Error('No Answer Provided In Menu');
         }
@@ -60,21 +57,8 @@ function MainMenu() {
 }
 
 function ViewTable() {
-
+    
 }
 
-// DisplayTitleCard();
-// MainMenu();
-
-let depts = new Table("departments");
-depts.addField('name','VARCHAR(30)',true);
-depts.create(db);
-let roles = new Table('roles','departments','department_id',true);
-roles.addField('title','VARCHAR(30)',true);
-roles.addField('salary','DECIMAL',true);
-roles.create(db);
-let empls = new Table('employees','roles','role_id',true);
-empls.addField('first_name','VARCHAR(30)',true);
-empls.addField('last_name','VARCHAR(30)',true);
-empls.addField('manager_id','INT',false);
-empls.create(db);
+DisplayTitleCard();
+MainMenu();
