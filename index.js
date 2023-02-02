@@ -1,5 +1,6 @@
-import mysql from 'mysql2';
-import inquirer from 'inquirer';
+const mysql = require('mysql2');
+const inquirer = require('inquirer');
+const Table = require('./lib/Table');
 
 // Connect to database
 const db = mysql.createConnection(
@@ -7,9 +8,9 @@ const db = mysql.createConnection(
       host: 'localhost',
       user: 'root',
       password: 'password',
-      database: 'classlist_db'
+      database: 'testdb'
     },
-    console.log(`Connected to the classlist_db database.`)
+    console.log(`Connected to the testdb database.`)
   );
 
 function DisplayTitleCard() {
@@ -62,5 +63,18 @@ function ViewTable() {
 
 }
 
-DisplayTitleCard();
-MainMenu();
+// DisplayTitleCard();
+// MainMenu();
+
+let depts = new Table("departments");
+depts.addField('name','VARCHAR(30)',true);
+depts.create(db);
+let roles = new Table('roles','departments','department_id',true);
+roles.addField('title','VARCHAR(30)',true);
+roles.addField('salary','DECIMAL',true);
+roles.create(db);
+let empls = new Table('employees','roles','role_id',true);
+empls.addField('first_name','VARCHAR(30)',true);
+empls.addField('last_name','VARCHAR(30)',true);
+empls.addField('manager_id','INT',false);
+empls.create(db);
