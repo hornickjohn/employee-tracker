@@ -1,6 +1,6 @@
 const mysql = require('mysql2');
 const inquirer = require('inquirer');
-const sequelize = require('./config/connection.js');
+const Table = require('./lib/Table.js');
 
 
 function DisplayTitleCard() {
@@ -51,7 +51,7 @@ function MainMenu() {
     })
     .catch((err) => {
         if (err) {
-        throw err;
+            throw err;
         }
     });
 }
@@ -60,5 +60,5 @@ function ViewTable() {
     
 }
 
-DisplayTitleCard();
-MainMenu();
+// DisplayTitleCard();
+// MainMenu();
