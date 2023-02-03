@@ -55,14 +55,18 @@ function MainMenu() {
     inquirer.prompt([
         { name:"choice", message:"What would you like to do?", type:'list', choices:[
             {name:'View All Employees', value:0},
-            {name:'Add Employee', value:1},
-            {name:'Update Employee Role', value:2},
-            {name:'Update Employee Manager', value:3},
-            {name:'View All Roles', value:4},
-            {name:'Add Role', value:5},
-            {name:'View All Departments',value:6},
-            {name:'Add Department',value:7},
-            {name:'Quit', value:8}
+            {name:'View Employees by Role', value:1},
+            {name:'View Employees by Manager', value:2},
+            {name:'Add Employee', value:3},
+            {name:'Update Employee Role', value:4},
+            {name:'Update Employee Manager', value:5},
+            {name:'View All Roles', value:6},
+            {name:'Add Role', value:7},
+            {name:'View All Departments',value:8},
+            {name:'Add Department',value:9},
+            {name:'View Utilized Budget by Department',value:10},
+            {name:'Remove Data',value:11},
+            {name:'Quit', value:12}
         ] }
     ])
     .then(async answers => {
@@ -73,36 +77,52 @@ function MainMenu() {
                 MainMenu();
                 break;
             case 1:
+                //view emp by role
+                ViewSubset(employees,'role');
+                break;
+            case 2:
+                //view emp by manager
+                ViewSubset(employees,'manager');
+                break;
+            case 3:
                 //send user to add an employee
                 AddData(employees);
                 break;
-            case 2:
+            case 4:
                 //send user to update role of an employee
                 UpdateData(employees,roles);
                 break;
-            case 3:
+            case 5:
                 //send user to update manager of an employee
                 UpdateData(employees,employees);
                 break;
-            case 4:
+            case 6:
                 //view role table
                 await ViewTable(roles);
                 MainMenu();
                 break;
-            case 5:
+            case 7:
                 //send user to add a role
                 AddData(roles);
                 break;
-            case 6:
+            case 8:
                 //view department table
                 await ViewTable(departments);
                 MainMenu();
                 break;
-            case 7:
+            case 9:
                 //send user to add a department
                 AddData(departments);
                 break;
-            case 8:
+            case 10:
+                //view budget
+                GetTotalBudget();
+                break;
+            case 11:
+                //delete data
+                RemoveData();
+                break;
+            case 12:
                 //say bye and exit
                 console.log('Goodbye!');
                 process.exit();
@@ -238,12 +258,15 @@ async function ViewSubset(table,flag) {
     if(table.name === 'employees') {
         let questions = [];
         if(flag === 'manager') {
-            questions.push({ name:'res', message:'Which manager\'s employees would you like to view?', type:'list', choices:GetInquirerOptionsFromTable(employees,['first_name','last_name']) });
+            questions.push({ name:'res', message:'Which manager\'s employees would you like to view?', type:'list', choices:await GetInquirerOptionsFromTable(employees,['first_name','last_name']) });
         } else if(flag==='role') {
-            questions.push({ name:'res', message:'Which role\'s staff would you like to view?', type:'list', choices:GetInquirerOptionsFromTable(roles,'title') });
+            questions.push({ name:'res', message:'Which role\'s staff would you like to view?', type:'list', choices:await GetInquirerOptionsFromTable(roles,'title') });
         } else {
-            return 'Invalid Flag Input';
+            console.log('Invalid Flag Input');
+            return;
         }
+
+        //prompt user with above question
         inquirer.prompt([
             ...questions
         ])
@@ -287,13 +310,127 @@ async function GetInquirerOptionsFromTable(table,identifier) {
 
 //displays table formatted in console
 async function ViewTable(table,field,value) {
-    const dat = await table.getData(db,field,value);
+    const dat = await table.getJoinedData(db,field,value);
     if(dat.length) {
+        for(let i = 0; i < dat.length; i++) {
+            if(dat[i].manager) {
+                let man = await employees.getData(db,'id',dat[i].manager);
+                dat[i].manager = man[0].first_name + ' ' + man[0].last_name;
+            }
+        }
+
         console.log('\n');
         console.table(dat);
     } else {
-        console.log('\nTable is empty - add some data!\n');
+        console.log('\nNo data fits those criteria - table empty.\n');
     }
+}
+
+//get user input, display budget for chosen department
+//hardcoded currently to query for all employees' salaries combined within a department
+async function GetTotalBudget() {
+    let questions = [
+        { name:'departmentid', message:'Which department\'s utilized budget would you like to see?', type:'list', choices:await GetInquirerOptionsFromTable(departments,'name') }
+    ];
+
+    //prompt user with above question
+    inquirer.prompt([
+        ...questions
+    ])
+    .then(async answers => {
+        //query database and get department budgets
+        let budget = '0';
+        await db.promise().query('SELECT departments.id AS department, SUM(salary) AS budget FROM employees JOIN roles ON employees.role_id=roles.id JOIN departments ON roles.department_id = departments.id GROUP BY department')
+        .then(results => {
+            try {
+                //find matching department and store its budget
+                results[0].forEach(result => {
+                    if(result.department === answers.departmentid) {
+                        budget = result.budget;
+                    }
+                });
+            } catch(error) {
+                throw error;
+            }
+        });
+        console.log('\nTotal budget: ' + budget + '\n');
+        MainMenu();
+    })
+    .catch((err) => {
+        if (err) {
+            throw err;
+        }
+    });
+}
+
+//query user for what type/piece of data to remove, and delete it
+async function RemoveData() {
+    let questions = [
+        { name:'table', message:'Which type of data would you like to remove?', type:'list', choices:['Employee','Role','Department'] }
+    ];
+
+    //prompt user with above questions
+    inquirer.prompt([
+        ...questions
+    ])
+    .then(async answers => {
+        //if employee selected, ask user which employee and delete that id from employees
+        if(answers.table === 'Employee') {
+            let choice = await GetInquirerOptionsFromTable(employees,['first_name','last_name']);
+            choice = [{name:'None',value:null}].concat(choice);
+            await inquirer.prompt([
+                { name:'emp', message:'Select an employee to delete:', type:'list', choices:choice }
+            ])
+            .then(async res => {
+                if(res.emp) {
+                    await employees.deleteData(db,res.emp);
+                }
+            })
+            .catch(err => {
+                throw err;
+            });
+        }
+        //if role selected, ask user which role and delete that id from roles
+        else if(answers.table === 'Role') {
+            console.log('WARNING: Any employees with this role will be removed from the database as well.');
+            let choice = await GetInquirerOptionsFromTable(roles,'title');
+            choice = [{name:'None',value:null}].concat(choice);
+            await inquirer.prompt([
+                { name:'role', message:'Select a role to delete:', type:'list', choices:choice }
+            ])
+            .then(async res => {
+                if(res.role) {
+                    await roles.deleteData(db,res.role);
+                }
+            })
+            .catch(err => {
+                throw err;
+            });
+        }
+        //if department selected, ask user which department and delete that id from departments
+        else if(answers.table === 'Department') {
+            console.log('WARNING: Any roles in this department, along with their employees, will be removed from the database as well.');
+            let choice = await GetInquirerOptionsFromTable(departments,'name');
+            choice = [{name:'None',value:null}].concat(choice);
+            await inquirer.prompt([
+                { name:'dpt', message:'Select a department to delete:', type:'list', choices:choice }
+            ])
+            .then(async res => {
+                if(res.dpt) {
+                    await departments.deleteData(db,res.dpt);
+                }
+            })
+            .catch(err => {
+                throw err;
+            });
+        }
+        MainMenu();
+    })
+    .catch((err) => {
+        if (err) {
+            throw err;
+        }
+    });
 }
 
 //generates tables in DB if they do not exist
