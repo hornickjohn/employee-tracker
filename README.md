@@ -19,7 +19,7 @@ Clone repository and run npm install for dependencies.
 
 <p>In your terminal, begin the application with node index.js. You will be presented with a list of options outlining the functionalities of this application. Choose any option, and follow successive prompts to insert, alter, remove, or view data from the employee database. Each time you finish an operation, you will be returned to the main menu. Select 'Quit' when you are done to exit the application.<p>
 
-[Walkthrough Video]()
+[Walkthrough Video](https://drive.google.com/file/d/1hWbYsKn4jfd5Kd9QlWeuZBdWW8jAee9W/view?usp=sharing)
 
 ## Questions
 
